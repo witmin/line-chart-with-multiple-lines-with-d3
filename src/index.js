@@ -31,7 +31,7 @@ const render = data => {
     const colorValue = d => d.city;
 
     const margin = {top: 80, right: 0, bottom: 70, left: 105};
-    const innerWidth = width - margin.left - margin.right - 200;
+    const innerWidth = width - margin.left - margin.right - 152;
     const innerHeight = height - margin.top - margin.bottom;
 
     const xScale = scaleTime()
@@ -109,10 +109,10 @@ const render = data => {
         .text(titleText);
 
     svg.append('g')
-        .attr('transform', `translate(800, 180)`)
+        .attr('transform', `translate(800, 140)`)
         .call(colorLegend, {
             colorScale,
-            spacing: 22,
+            spacing: 32,
             textOffset: 22,
             circleRadius: 10
         });
