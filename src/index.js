@@ -19,7 +19,7 @@ const width = +svg.attr('width');
 const height = +svg.attr('height');
 
 const render = data => {
-    const titleText = 'A Week Temperature in San Francisco';
+    const titleText = 'A Week of Temperature Around the World';
     const xValue = d => d.timestamp;
     const xAxisLabel = 'Time';
     const yValue = d => d.temperature;

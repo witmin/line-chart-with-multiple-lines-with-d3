@@ -8,6 +8,8 @@ body {
     fill: none;
     stroke-width: 5;
     stroke-linejoin: round;
+    stroke-linecap: round;
+    mix-blend-mode: multiply;
 }
 
 text {
