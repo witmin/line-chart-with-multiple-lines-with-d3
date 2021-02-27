@@ -10,8 +10,11 @@ import {
     curveBasis,
     nest,
     scaleOrdinal,
-    schemeCategory10
+    schemeCategory10,
+    descending
 } from 'd3';
+
+import {colorLegend} from "./colorLegend";
 
 const svg = select('svg');
 
@@ -27,9 +30,8 @@ const render = data => {
 
     const colorValue = d => d.city;
 
-    const circleRadius = 3;
-    const margin = {top: 80, right: 40, bottom: 70, left: 105};
-    const innerWidth = width - margin.left - margin.right;
+    const margin = {top: 80, right: 0, bottom: 70, left: 105};
+    const innerWidth = width - margin.left - margin.right - 200;
     const innerHeight = height - margin.top - margin.bottom;
 
     const xScale = scaleTime()
@@ -85,9 +87,12 @@ const render = data => {
         .y(d => yScale(yValue(d)))
         .curve(curveBasis);
 
+    const lastYValue = d => yValue(d.values[d.values.length - 1]);
+
     const nested = nest()
         .key(colorValue)
-        .entries(data);
+        .entries(data)
+        .sort((a, b) => descending(lastYValue(a), lastYValue(b)));
 
     colorScale.domain(nested.map(d => d.key));
     console.log(nested);
@@ -102,6 +107,15 @@ const render = data => {
         .attr('class', 'title')
         .attr('y', -10)
         .text(titleText);
+
+    svg.append('g')
+        .attr('transform', `translate(800, 180)`)
+        .call(colorLegend, {
+            colorScale,
+            spacing: 22,
+            textOffset: 22,
+            circleRadius: 10
+        });
 };
 
 csv('data-canvas-sense-your-city-one-week.csv').then(data => {

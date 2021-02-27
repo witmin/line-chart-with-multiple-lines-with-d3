@@ -40,6 +40,10 @@
   var ascendingBisect = bisector(ascending$1);
   var bisectRight = ascendingBisect.right;
 
+  function descending(a, b) {
+    return b < a ? -1 : b > a ? 1 : b >= a ? 0 : NaN;
+  }
+
   function extent(values, valueof) {
     var n = values.length,
         i = -1,
@@ -5250,6 +5254,31 @@
     return new Basis(context);
   }
 
+  const colorLegend = (selection, props) => {
+      const {colorScale, spacing, textOffset, circleRadius} = props;
+
+      const groups = selection.selectAll('g')
+          .data(colorScale.domain());
+      const groupEnter = groups.enter().append('g');
+      groupEnter.merge(groups)
+          .attr('transform', (d, i) => `translate(0, ${i * spacing})`);
+
+      groups.exit().remove();
+
+      // Enter & Update
+      groupEnter.append('circle')
+          .merge(groups.select('circle'))
+          .attr('r', circleRadius)
+          .attr('fill', colorScale);
+
+      groupEnter.append('text')
+          .attr('x', textOffset)
+          .attr('dy', '0.32em')
+          .merge(groups.select('text'))
+          .text(d => d);
+
+  };
+
   const svg = select('svg');
 
   const width = +svg.attr('width');
@@ -5263,8 +5292,9 @@
       const yAxisLabel = 'Temperature';
 
       const colorValue = d => d.city;
-      const margin = {top: 80, right: 40, bottom: 70, left: 105};
-      const innerWidth = width - margin.left - margin.right;
+
+      const margin = {top: 80, right: 0, bottom: 70, left: 105};
+      const innerWidth = width - margin.left - margin.right - 200;
       const innerHeight = height - margin.top - margin.bottom;
 
       const xScale = scaleTime()
@@ -5320,9 +5350,12 @@
           .y(d => yScale(yValue(d)))
           .curve(curveBasis);
 
+      const lastYValue = d => yValue(d.values[d.values.length - 1]);
+
       const nested = nest()
           .key(colorValue)
-          .entries(data);
+          .entries(data)
+          .sort((a, b) => descending(lastYValue(a), lastYValue(b)));
 
       colorScale.domain(nested.map(d => d.key));
       console.log(nested);
@@ -5337,6 +5370,15 @@
           .attr('class', 'title')
           .attr('y', -10)
           .text(titleText);
+
+      svg.append('g')
+          .attr('transform', `translate(800, 180)`)
+          .call(colorLegend, {
+              colorScale,
+              spacing: 22,
+              textOffset: 22,
+              circleRadius: 10
+          });
   };
 
   csv('data-canvas-sense-your-city-one-week.csv').then(data => {
