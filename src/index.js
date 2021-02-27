@@ -7,7 +7,10 @@ import {
     axisLeft,
     axisBottom,
     line,
-    curveBasis
+    curveBasis,
+    nest,
+    scaleOrdinal,
+    schemeCategory10
 } from 'd3';
 
 const svg = select('svg');
@@ -21,6 +24,9 @@ const render = data => {
     const xAxisLabel = 'Time';
     const yValue = d => d.temperature;
     const yAxisLabel = 'Temperature';
+
+    const colorValue = d => d.city;
+
     const circleRadius = 3;
     const margin = {top: 80, right: 40, bottom: 70, left: 105};
     const innerWidth = width - margin.left - margin.right;
@@ -35,6 +41,8 @@ const render = data => {
         .domain(extent(data, yValue))
         .range([innerHeight, 0])
         .nice();
+
+    const colorScale = scaleOrdinal(schemeCategory10);
 
     const g = svg.append('g')
         .attr('transform', `translate(${margin.left},${margin.top})`);
@@ -77,9 +85,18 @@ const render = data => {
         .y(d => yScale(yValue(d)))
         .curve(curveBasis);
 
-    g.append('path')
-        .attr('class','line-path')
-        .attr('d', lineGenerator(data));
+    const nested = nest()
+        .key(colorValue)
+        .entries(data);
+
+    colorScale.domain(nested.map(d => d.key));
+    console.log(nested);
+
+    g.selectAll('line-path').data(nested)
+        .enter().append('path')
+        .attr('class', 'line-path')
+        .attr('d', d => lineGenerator(d.values))
+        .attr('stroke', d => colorScale(d.key));
 
     g.append('text')
         .attr('class', 'title')
@@ -87,7 +104,7 @@ const render = data => {
         .text(titleText);
 };
 
-csv('temperature-in-san-francisco.csv').then(data => {
+csv('data-canvas-sense-your-city-one-week.csv').then(data => {
     data.forEach(d => {
         d.timestamp = new Date(d.timestamp);
         d.temperature = +d.temperature;

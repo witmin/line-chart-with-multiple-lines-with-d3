@@ -6,7 +6,6 @@ body {
 
 .line-path {
     fill: none;
-    stroke: #8f411b;
     stroke-width: 5;
     stroke-linejoin: round;
 }

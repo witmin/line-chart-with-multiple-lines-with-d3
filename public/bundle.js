@@ -3104,6 +3104,78 @@
     return map;
   }
 
+  function nest() {
+    var keys = [],
+        sortKeys = [],
+        sortValues,
+        rollup,
+        nest;
+
+    function apply(array, depth, createResult, setResult) {
+      if (depth >= keys.length) {
+        if (sortValues != null) array.sort(sortValues);
+        return rollup != null ? rollup(array) : array;
+      }
+
+      var i = -1,
+          n = array.length,
+          key = keys[depth++],
+          keyValue,
+          value,
+          valuesByKey = map$2(),
+          values,
+          result = createResult();
+
+      while (++i < n) {
+        if (values = valuesByKey.get(keyValue = key(value = array[i]) + "")) {
+          values.push(value);
+        } else {
+          valuesByKey.set(keyValue, [value]);
+        }
+      }
+
+      valuesByKey.each(function(values, key) {
+        setResult(result, key, apply(values, depth, createResult, setResult));
+      });
+
+      return result;
+    }
+
+    function entries(map, depth) {
+      if (++depth > keys.length) return map;
+      var array, sortKey = sortKeys[depth - 1];
+      if (rollup != null && depth >= keys.length) array = map.entries();
+      else array = [], map.each(function(v, k) { array.push({key: k, values: entries(v, depth)}); });
+      return sortKey != null ? array.sort(function(a, b) { return sortKey(a.key, b.key); }) : array;
+    }
+
+    return nest = {
+      object: function(array) { return apply(array, 0, createObject, setObject); },
+      map: function(array) { return apply(array, 0, createMap, setMap); },
+      entries: function(array) { return entries(apply(array, 0, createMap, setMap), 0); },
+      key: function(d) { keys.push(d); return nest; },
+      sortKeys: function(order) { sortKeys[keys.length - 1] = order; return nest; },
+      sortValues: function(order) { sortValues = order; return nest; },
+      rollup: function(f) { rollup = f; return nest; }
+    };
+  }
+
+  function createObject() {
+    return {};
+  }
+
+  function setObject(object, key, value) {
+    object[key] = value;
+  }
+
+  function createMap() {
+    return map$2();
+  }
+
+  function setMap(map, key, value) {
+    map.set(key, value);
+  }
+
   function Set() {}
 
   var proto = map$2.prototype;
@@ -3655,6 +3727,48 @@
 
   var map = array.map;
   var slice = array.slice;
+
+  var implicit = {name: "implicit"};
+
+  function ordinal() {
+    var index = map$2(),
+        domain = [],
+        range = [],
+        unknown = implicit;
+
+    function scale(d) {
+      var key = d + "", i = index.get(key);
+      if (!i) {
+        if (unknown !== implicit) return unknown;
+        index.set(key, i = domain.push(d));
+      }
+      return range[(i - 1) % range.length];
+    }
+
+    scale.domain = function(_) {
+      if (!arguments.length) return domain.slice();
+      domain = [], index = map$2();
+      var i = -1, n = _.length, d, key;
+      while (++i < n) if (!index.has(key = (d = _[i]) + "")) index.set(key, domain.push(d));
+      return scale;
+    };
+
+    scale.range = function(_) {
+      return arguments.length ? (range = slice.call(_), scale) : range.slice();
+    };
+
+    scale.unknown = function(_) {
+      return arguments.length ? (unknown = _, scale) : unknown;
+    };
+
+    scale.copy = function() {
+      return ordinal(domain, range).unknown(unknown);
+    };
+
+    initRange.apply(scale, arguments);
+
+    return scale;
+  }
 
   function constant$1(x) {
     return function() {
@@ -4979,6 +5093,14 @@
     return initRange.apply(calendar(year, month, sunday, day, hour, minute, second, millisecond, timeFormat).domain([new Date(2000, 0, 1), new Date(2000, 0, 2)]), arguments);
   }
 
+  function colors(specifier) {
+    var n = specifier.length / 6 | 0, colors = new Array(n), i = 0;
+    while (i < n) colors[i] = "#" + specifier.slice(i * 6, ++i * 6);
+    return colors;
+  }
+
+  var schemeCategory10 = colors("1f77b4ff7f0e2ca02cd627289467bd8c564be377c27f7f7fbcbd2217becf");
+
   function constant(x) {
     return function constant() {
       return x;
@@ -5139,6 +5261,8 @@
       const xAxisLabel = 'Time';
       const yValue = d => d.temperature;
       const yAxisLabel = 'Temperature';
+
+      const colorValue = d => d.city;
       const margin = {top: 80, right: 40, bottom: 70, left: 105};
       const innerWidth = width - margin.left - margin.right;
       const innerHeight = height - margin.top - margin.bottom;
@@ -5152,6 +5276,8 @@
           .domain(extent(data, yValue))
           .range([innerHeight, 0])
           .nice();
+
+      const colorScale = ordinal(schemeCategory10);
 
       const g = svg.append('g')
           .attr('transform', `translate(${margin.left},${margin.top})`);
@@ -5194,9 +5320,18 @@
           .y(d => yScale(yValue(d)))
           .curve(curveBasis);
 
-      g.append('path')
-          .attr('class','line-path')
-          .attr('d', lineGenerator(data));
+      const nested = nest()
+          .key(colorValue)
+          .entries(data);
+
+      colorScale.domain(nested.map(d => d.key));
+      console.log(nested);
+
+      g.selectAll('line-path').data(nested)
+          .enter().append('path')
+          .attr('class', 'line-path')
+          .attr('d', d => lineGenerator(d.values))
+          .attr('stroke', d => colorScale(d.key));
 
       g.append('text')
           .attr('class', 'title')
@@ -5204,7 +5339,7 @@
           .text(titleText);
   };
 
-  csv('temperature-in-san-francisco.csv').then(data => {
+  csv('data-canvas-sense-your-city-one-week.csv').then(data => {
       data.forEach(d => {
           d.timestamp = new Date(d.timestamp);
           d.temperature = +d.temperature;
