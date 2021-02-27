@@ -13,6 +13,10 @@ The source code by Curran is on [VizHub](https://vizhub.com/curran/2546209d161e4
 
 This repository used [rollup.js](https://rollupjs.org/) as the JavaScript module bundler. 
 
+## Screenshot
+![Line Chart with Multiple Lines](screenshot/screenshot.png)
+
+
 ## View the outcome
 Open `public/index.html` in modern browser such as Chrome or Firefox directly. 
 
